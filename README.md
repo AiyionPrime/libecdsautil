@@ -46,7 +46,9 @@ __Steps to verify:__
 - [x] implement sqrt_ratio_i()
 - [x] implement `is_negative` / `is_odd`
 - [x] implement `conditional_negate`
-- [ ] upstream `EDWARDS_D`
-- [ ] upstream sqrt_ratio_i()
-- [ ] upstream `is_negative` / `is_odd`
+- [x] upstream `EDWARDS_D`
+- [ ] upstream `sqrt_ratio_i()` https://github.com/serai-dex/serai/pull/87
+- [x] upstream `is_negative` / `is_odd`
 - [ ] upstream `conditional_negate`
+
+- [ ] wait for next upstream release and strip downstream implementations

@@ -212,9 +212,9 @@ impl Zeroize for CompressedEdwardsX {
 
 pub trait FieldElementExt {
     fn conditional_negate(&mut self, negate: Choice);
-    fn is_negative(&self) -> Choice;
-    fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement);
-    fn get_edwards_d() -> FieldElement;
+    fn is_negative(&self) -> Choice; //TODO use upstreamed `is_odd`-variant once next release is out
+    fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement); //TODO use upstreamed variant once next release is out
+    fn get_edwards_d() -> FieldElement; //TODO use upstreamed variant once next release is out
 }
 
 impl FieldElementExt for FieldElement {
