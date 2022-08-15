@@ -1,0 +1,16 @@
+[package]
+name = "libecdsautil"
+version = "0.1.0"
+edition = "2021"
+description = "Safe bindings to libecdsautil for ec25519 signing."
+repository = "https://github.com/AiyionPrime/libecdsautil.git"
+
+[dependencies]
+curve25519-dalek = "3"
+crypto-bigint = "0.4"
+dalek-ff-group = "0.1.2"
+ff = "0.12"
+hex = {version = "0.4.3", features = ["serde"]}
+libecdsautil-sys = "0.1.0"
+subtle = "2.4.1"
+zeroize = ">=1, <1.4"
