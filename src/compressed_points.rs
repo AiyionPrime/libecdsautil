@@ -3,6 +3,7 @@ use curve25519_dalek::edwards::CompressedEdwardsY;
 use curve25519_dalek::edwards::EdwardsPoint;
 use dalek_ff_group::field::FieldElement;
 use dalek_ff_group::field::SQRT_M1;
+use dalek_ff_group::field::EDWARDS_D;
 use ff::Field;
 use ff::PrimeField;
 //use curve25519_dalek::field::FieldElement;
@@ -97,7 +98,7 @@ impl CompressedEdwardsX {
         let uc_z = FieldElement::one();
         let uc_xx = uc_x.square();
         let s = -uc_xx - uc_z;
-        let t = uc_xx * FieldElement::get_edwards_d() - uc_z;
+        let t = uc_xx * EDWARDS_D - uc_z;
         let (is_valid_x_coord, mut uc_y) = FieldElement::sqrt_ratio_i(&s, &t);
 
         if is_valid_x_coord.unwrap_u8() != 1u8 {
@@ -214,18 +215,9 @@ pub trait FieldElementExt {
     fn conditional_negate(&mut self, negate: Choice);
     fn is_negative(&self) -> Choice; //TODO use upstreamed `is_odd`-variant once next release is out
     fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement); //TODO use upstreamed variant once next release is out
-    fn get_edwards_d() -> FieldElement; //TODO use upstreamed variant once next release is out
 }
 
 impl FieldElementExt for FieldElement {
-    fn get_edwards_d() -> FieldElement {
-        let bytes = <[u8; 32]>::from_hex(
-            "a3785913ca4deb75abd841414d0a700098e879777940c78c73fe6f2bee6c0352",
-        )
-        .expect("Decoding failed");
-        FieldElement::from_repr(bytes).unwrap()
-    }
-
     fn conditional_negate(&mut self, negate: Choice) {
         self.conditional_assign(&(-(*self)), negate);
     }
@@ -289,7 +281,7 @@ impl EdwardsPointExt for EdwardsPoint {
         let uc_z = FieldElement::one();
         let uc_yy = uc_y.square();
         let u = uc_yy - uc_z; // u =  y²-1
-        let v = uc_yy * FieldElement::get_edwards_d() + uc_z; // v = dy²+1 //FIXME
+        let v = uc_yy * EDWARDS_D + uc_z; // v = dy²+1
         let (_, mut uc_x) = FieldElement::sqrt_ratio_i(&u, &v);
         // as this is part of upstreams decompression and self is guaranteed to be a valid Point,
         // this cannot be an invalid y-coord.
