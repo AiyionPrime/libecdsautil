@@ -113,7 +113,7 @@ impl CompressedEdwardsX {
         // the following (inperformant) hack using their compressed Y Implementation
         // is used.
         let mut bytes = uc_y.to_repr();
-        bytes[31] ^= uc_x.is_negative().unwrap_u8() << 7;
+        bytes[31] ^= uc_x.is_odd().unwrap_u8() << 7;
         CompressedEdwardsY(bytes).decompress()
     }
 }
@@ -211,18 +211,11 @@ impl Zeroize for CompressedEdwardsX {
 
 pub trait FieldElementExt {
     fn conditional_negate(&mut self, negate: Choice);
-    fn is_negative(&self) -> Choice; //TODO use upstreamed `is_odd`-variant once next release is out
 }
 
 impl FieldElementExt for FieldElement {
     fn conditional_negate(&mut self, negate: Choice) {
         self.conditional_assign(&(-(*self)), negate);
-    }
-
-    fn is_negative(&self) -> Choice {
-        // ed25519 paper: `x` is negative if the low bit is set.
-        let bytes = self.to_repr();
-        (bytes[0] & 1).into()
     }
 
 }
@@ -270,7 +263,7 @@ impl EdwardsPointExt for EdwardsPoint {
         let mut s: [u8; 32];
 
         s = x.to_repr();
-        s[31] ^= y.is_negative().unwrap_u8() << 7;
+        s[31] ^= y.is_odd().unwrap_u8() << 7;
         CompressedEdwardsX(s)
     }
 }
