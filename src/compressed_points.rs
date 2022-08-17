@@ -2,7 +2,6 @@ use core::fmt::Debug;
 use curve25519_dalek::edwards::CompressedEdwardsY;
 use curve25519_dalek::edwards::EdwardsPoint;
 use dalek_ff_group::field::FieldElement;
-use dalek_ff_group::field::SQRT_M1;
 use dalek_ff_group::field::EDWARDS_D;
 use ff::Field;
 use ff::PrimeField;
@@ -10,7 +9,6 @@ use ff::PrimeField;
 use curve25519_dalek::traits::Identity;
 use hex::FromHexError;
 use subtle::Choice;
-use subtle::ConditionallySelectable;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
@@ -99,7 +97,7 @@ impl CompressedEdwardsX {
         let uc_xx = uc_x.square();
         let s = -uc_xx - uc_z;
         let t = uc_xx * EDWARDS_D - uc_z;
-        let (is_valid_x_coord, mut uc_y) = FieldElement::sqrt_ratio_i(&s, &t);
+        let (is_valid_x_coord, mut uc_y) = FieldElement::sqrt_ratio_i(s, t);
 
         if is_valid_x_coord.unwrap_u8() != 1u8 {
             return None;
@@ -214,7 +212,6 @@ impl Zeroize for CompressedEdwardsX {
 pub trait FieldElementExt {
     fn conditional_negate(&mut self, negate: Choice);
     fn is_negative(&self) -> Choice; //TODO use upstreamed `is_odd`-variant once next release is out
-    fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement); //TODO use upstreamed variant once next release is out
 }
 
 impl FieldElementExt for FieldElement {
@@ -228,29 +225,6 @@ impl FieldElementExt for FieldElement {
         (bytes[0] & 1).into()
     }
 
-    fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (Choice, FieldElement) {
-        let v3 = v.square() * v;
-        let v7 = v3.square() * v;
-        let mut r = (*u * v3)
-            * (*u * v7).pow((-FieldElement::from(5u8)) * FieldElement::from(8u8).invert().unwrap());
-        let check = (*v) * r.square();
-        let i = SQRT_M1;
-
-        let correct_sign = check.ct_eq(u);
-        let flipped_sign = check.ct_eq(&(-(*u)));
-        let flipped_sign_i = check.ct_eq(&((-(*u)) * i));
-
-        let r_prime = i * r;
-
-        r.conditional_assign(&r_prime, flipped_sign | flipped_sign_i);
-
-        let r_is_negative = r.is_negative();
-        r.conditional_assign(&(-r), r_is_negative.into());
-
-        let was_non_zero_square = correct_sign | flipped_sign;
-
-        (was_non_zero_square, r)
-    }
 }
 
 pub trait EdwardsPointExt {
@@ -282,7 +256,7 @@ impl EdwardsPointExt for EdwardsPoint {
         let uc_yy = uc_y.square();
         let u = uc_yy - uc_z; // u =  y²-1
         let v = uc_yy * EDWARDS_D + uc_z; // v = dy²+1
-        let (_, mut uc_x) = FieldElement::sqrt_ratio_i(&u, &v);
+        let (_, mut uc_x) = FieldElement::sqrt_ratio_i(u, v);
         // as this is part of upstreams decompression and self is guaranteed to be a valid Point,
         // this cannot be an invalid y-coord.
 
@@ -305,12 +279,9 @@ impl EdwardsPointExt for EdwardsPoint {
 mod tests {
     use curve25519_dalek::edwards::CompressedEdwardsY;
     use dalek_ff_group::field::FieldElement;
-    use dalek_ff_group::field::SQRT_M1;
     use hex::FromHex;
     //use curve25519_dalek::constants::SQRT_M1 as dalek_SQRT_M1;
     //use curve25519_dalek::constants::EDWARDS_D as dalek_EDWARDS_D;
-    use crate::compressed_points::FieldElementExt;
-    use ff::Field;
     use ff::PrimeField;
 
     /* both tests work if dalek had the constants public
@@ -341,44 +312,5 @@ mod tests {
         let mut bytes = cy.to_bytes();
         bytes[31] &= !(1 << 7);
         FieldElement::from_repr(bytes).unwrap();
-    }
-
-    #[test]
-    fn sqrt_ratio_behavior() {
-        let zero = FieldElement::zero();
-        let one = FieldElement::one();
-        let i = SQRT_M1;
-        let two = one + one; // 2 is nonsquare mod p.
-        let four = two + two; // 4 is square mod p.
-
-        // 0/0 should return (1, 0) since u is 0
-        let (choice, sqrt) = FieldElement::sqrt_ratio_i(&zero, &zero);
-        assert_eq!(choice.unwrap_u8(), 1);
-        assert_eq!(sqrt, zero);
-        assert_eq!(sqrt.is_negative().unwrap_u8(), 0);
-
-        // 1/0 should return (0, 0) since v is 0, u is nonzero
-        let (choice, sqrt) = FieldElement::sqrt_ratio_i(&one, &zero);
-        assert_eq!(choice.unwrap_u8(), 0);
-        assert_eq!(sqrt, zero);
-        assert_eq!(sqrt.is_negative().unwrap_u8(), 0);
-
-        // 2/1 is nonsquare, so we expect (0, sqrt(i*2))
-        let (choice, sqrt) = FieldElement::sqrt_ratio_i(&two, &one);
-        assert_eq!(choice.unwrap_u8(), 0);
-        assert_eq!(sqrt.square(), two * i);
-        assert_eq!(sqrt.is_negative().unwrap_u8(), 0);
-
-        // 4/1 is square, so we expect (1, sqrt(4))
-        let (choice, sqrt) = FieldElement::sqrt_ratio_i(&four, &one);
-        assert_eq!(choice.unwrap_u8(), 1);
-        assert_eq!(sqrt.square(), four);
-        assert_eq!(sqrt.is_negative().unwrap_u8(), 0);
-
-        // 1/4 is square, so we expect (1, 1/sqrt(4))
-        let (choice, sqrt) = FieldElement::sqrt_ratio_i(&one, &four);
-        assert_eq!(choice.unwrap_u8(), 1);
-        assert_eq!(sqrt.square() * four, one);
-        assert_eq!(sqrt.is_negative().unwrap_u8(), 0);
     }
 }
