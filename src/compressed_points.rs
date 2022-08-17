@@ -9,6 +9,7 @@ use ff::PrimeField;
 use curve25519_dalek::traits::Identity;
 use hex::FromHexError;
 use subtle::Choice;
+use subtle::ConditionallyNegatable;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
@@ -207,17 +208,6 @@ impl Zeroize for CompressedEdwardsX {
         self.0.zeroize();
         self.0[0] = 1;
     }
-}
-
-pub trait FieldElementExt {
-    fn conditional_negate(&mut self, negate: Choice);
-}
-
-impl FieldElementExt for FieldElement {
-    fn conditional_negate(&mut self, negate: Choice) {
-        self.conditional_assign(&(-(*self)), negate);
-    }
-
 }
 
 pub trait EdwardsPointExt {
