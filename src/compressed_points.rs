@@ -299,8 +299,8 @@ impl EdwardsPointExt for EdwardsPoint {
         uc_x.conditional_negate(compressed_sign_bit);
 
         let recip = uc_z.invert().unwrap();
-        let x = uc_x * &recip;
-        let y = uc_y * &recip;
+        let x = uc_x * recip;
+        let y = uc_y * recip;
         let mut s: [u8; 32];
 
         s = x.to_repr();
