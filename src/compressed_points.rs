@@ -1,4 +1,5 @@
 use core::fmt::Debug;
+use crypto_bigint::U256;
 use curve25519_dalek::edwards::CompressedEdwardsY;
 use curve25519_dalek::edwards::EdwardsPoint;
 use dalek_ff_group::field::FieldElement;
@@ -31,6 +32,15 @@ impl FromHex for CompressedLegacyX {
                 index: 62,
             });
         }
+
+        // bigger than max(GF(19²))
+        let max: U256 =
+            U256::from_be_hex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec");
+        let to_test: U256 = U256::from_le_slice(&bytes);
+        if to_test > max {
+            return Err(FromHexError::InvalidHexCharacter { c: 'f', index: 63 });
+        }
+
         Ok(CompressedLegacyX(bytes))
     }
 }
@@ -323,5 +333,16 @@ mod tests {
         let expected = Err(FromHexError::InvalidHexCharacter { c: 'f', index: 62 });
 
         assert_eq!(clx, expected);
+    }
+
+    #[test]
+    fn invalid_definition_range() {
+        let suffix = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f";
+        for n in 237..=255 {
+            let h = hex::encode([n]);
+            let invalid = CompressedLegacyX::from_hex(h + suffix);
+            let expected = Err(FromHexError::InvalidHexCharacter { c: 'f', index: 63 });
+            assert_eq!(invalid, expected);
+        }
     }
 }
