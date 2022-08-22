@@ -1,6 +1,6 @@
 [package]
 name = "libecdsautil"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 description = "Safe bindings to libecdsautil for ec25519 signing."
 repository = "https://github.com/AiyionPrime/libecdsautil.git"
