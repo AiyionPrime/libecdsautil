@@ -21,7 +21,16 @@ pub struct CompressedLegacyX(pub [u8; 32]);
 impl FromHex for CompressedLegacyX {
     type Error = FromHexError;
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
-        let bytes = <[u8; 32]>::from_hex(hex)?;
+        let bytes = <[u8; 32]>::from_hex(&hex)?;
+        let as_ref = hex.as_ref();
+
+        // is valid hex, but might contain one bit too much
+        if 1 == (bytes[31] >> 7) {
+            return Err(FromHexError::InvalidHexCharacter {
+                c: as_ref[62] as char,
+                index: 62,
+            });
+        }
         Ok(CompressedLegacyX(bytes))
     }
 }
@@ -296,6 +305,15 @@ mod tests {
         let mut bytes = cy.to_bytes();
         bytes[31] &= !(1 << 7);
         FieldElement::from_repr(bytes).unwrap();
+    }
+
+    #[test]
+    fn sign_bit_set() {
+        let expected_legcy_x = "0000000000000000000000000000000000000000000000000000000000000090";
+        let clx = CompressedLegacyX::from_hex(expected_legcy_x);
+        let expected = Err(FromHexError::InvalidHexCharacter { c: '9', index: 62 });
+
+        assert_eq!(clx, expected);
     }
 
     #[test]
