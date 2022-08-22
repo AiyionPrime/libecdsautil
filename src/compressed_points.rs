@@ -15,7 +15,7 @@ use zeroize::Zeroize;
 
 use hex::FromHex;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CompressedLegacyX(pub [u8; 32]);
 
 impl FromHex for CompressedLegacyX {
@@ -260,9 +260,10 @@ impl EdwardsPointExt for EdwardsPoint {
 
 #[cfg(test)]
 mod tests {
+    use crate::compressed_points::CompressedLegacyX;
     use curve25519_dalek::edwards::CompressedEdwardsY;
     use dalek_ff_group::field::FieldElement;
-    use hex::FromHex;
+    use hex::{FromHex, FromHexError};
     //use curve25519_dalek::constants::SQRT_M1 as dalek_SQRT_M1;
     //use curve25519_dalek::constants::EDWARDS_D as dalek_EDWARDS_D;
     use ff::PrimeField;
@@ -295,5 +296,14 @@ mod tests {
         let mut bytes = cy.to_bytes();
         bytes[31] &= !(1 << 7);
         FieldElement::from_repr(bytes).unwrap();
+    }
+
+    #[test]
+    fn ff32() {
+        let invalid_legacy_x = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        let clx = CompressedLegacyX::from_hex(invalid_legacy_x);
+        let expected = Err(FromHexError::InvalidHexCharacter { c: 'f', index: 62 });
+
+        assert_eq!(clx, expected);
     }
 }
