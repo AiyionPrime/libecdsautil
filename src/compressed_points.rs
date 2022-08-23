@@ -17,7 +17,27 @@ use zeroize::Zeroize;
 use hex::FromHex;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct CompressedLegacyX(pub [u8; 32]);
+pub struct CompressedLegacyX([u8; 32]);
+
+impl TryFrom<[u8; 32]> for CompressedLegacyX {
+    type Error = &'static str;
+
+    fn try_from(bytes: [u8; 32]) -> Result<Self, Self::Error> {
+        if 1 == (bytes[31] >> 7) {
+            return Err("Input bytes contain flag-bit!");
+        }
+
+        // bigger than max(GF(19²))
+        let max: U256 =
+            U256::from_be_hex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec");
+        let to_test: U256 = U256::from_le_slice(&bytes);
+        if to_test > max {
+            return Err("Invalid value for definition range!");
+        }
+
+        Ok(CompressedLegacyX(bytes))
+    }
+}
 
 impl FromHex for CompressedLegacyX {
     type Error = FromHexError;
