@@ -23,14 +23,13 @@ impl TryFrom<[u8; 32]> for CompressedLegacyX {
     type Error = &'static str;
 
     fn try_from(bytes: [u8; 32]) -> Result<Self, Self::Error> {
-        if 1 == (bytes[31] >> 7) {
-            return Err("Input bytes contain flag-bit!");
-        }
+        let mut without_flag = bytes;
+        without_flag[31] &= !(1 << 7);
 
         // bigger than max(GF(19²))
         let max: U256 =
             U256::from_be_hex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec");
-        let to_test: U256 = U256::from_le_slice(&bytes);
+        let to_test: U256 = U256::from_le_slice(&without_flag);
         if to_test > max {
             return Err("Invalid value for definition range!");
         }
@@ -43,20 +42,14 @@ impl FromHex for CompressedLegacyX {
     type Error = FromHexError;
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
         let bytes = <[u8; 32]>::from_hex(&hex)?;
-        let as_ref = hex.as_ref();
 
-        // is valid hex, but might contain one bit too much
-        if 1 == (bytes[31] >> 7) {
-            return Err(FromHexError::InvalidHexCharacter {
-                c: as_ref[62] as char,
-                index: 62,
-            });
-        }
+        let mut without_flag = bytes;
+        without_flag[31] &= !(1 << 7);
 
         // bigger than max(GF(19²))
         let max: U256 =
             U256::from_be_hex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec");
-        let to_test: U256 = U256::from_le_slice(&bytes);
+        let to_test: U256 = U256::from_le_slice(&without_flag);
         if to_test > max {
             return Err(FromHexError::InvalidHexCharacter { c: 'f', index: 63 });
         }
@@ -79,7 +72,6 @@ impl CompressedLegacyX {
             0x0b, 0x12, 0xd9, 0x70,
         ];
         let legacy_to_ed25519_factor = FieldElement::from_repr(LEGACY_TO_ED25519).unwrap();
-        //println!("{:?}", c_y.to_bytes());
         let mut bytes = self.to_bytes();
         let compressed_sign_bit = Choice::from(bytes[31] >> 7);
         bytes[31] &= !(1 << 7);
@@ -338,19 +330,10 @@ mod tests {
     }
 
     #[test]
-    fn sign_bit_set() {
-        let expected_legcy_x = "0000000000000000000000000000000000000000000000000000000000000090";
-        let clx = CompressedLegacyX::from_hex(expected_legcy_x);
-        let expected = Err(FromHexError::InvalidHexCharacter { c: '9', index: 62 });
-
-        assert_eq!(clx, expected);
-    }
-
-    #[test]
     fn ff32() {
         let invalid_legacy_x = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
         let clx = CompressedLegacyX::from_hex(invalid_legacy_x);
-        let expected = Err(FromHexError::InvalidHexCharacter { c: 'f', index: 62 });
+        let expected = Err(FromHexError::InvalidHexCharacter { c: 'f', index: 63 });
 
         assert_eq!(clx, expected);
     }
@@ -364,5 +347,12 @@ mod tests {
             let expected = Err(FromHexError::InvalidHexCharacter { c: 'f', index: 63 });
             assert_eq!(invalid, expected);
         }
+    }
+
+    #[test]
+    fn valid_definition_range() {
+        let suffix = "7559092eb75ebe31ef918a14032ab444dd1f951c9513d3c4532171d22e228ef7";
+        let cx = CompressedLegacyX::from_hex(suffix);
+        assert!(cx.is_ok())
     }
 }
