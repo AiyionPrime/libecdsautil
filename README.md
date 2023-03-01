@@ -26,7 +26,7 @@ $x= {X \over Z}$
 
 $y={Y \over Z}$
 
-$ x\*y={T \over Z} $
+$x y={T \over Z}$
 
 Each of the tuples segments is u32[32]~1024bit
 
